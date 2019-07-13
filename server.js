@@ -1,3 +1,5 @@
+//killall node
+
 let http = require("http");
 let https = require("https");
 let fs = require("fs");
@@ -37,22 +39,29 @@ http
             break;
           }
           case "/api/users/data": {
-            getUserData(connectToDB(res));
 
             res.writeHead(200, headers);
 
-            if (mydata != null) {
-              res.write(mydata);
-              res.end();
-            } else {
-              res.write("try again");
-              res.end();
+            connection = connectToDB(res);
+          
+            getUserData(connection).then((data)=>{
+              mydata = data;
+            }).catch(()=> {
+              console.log("error getting data")
+            })
+
+            if(mydata != null)
+            {
+              res.write(mydata)
+            }else {
+              res.write("refresh")
             }
 
+            res.end();
             break;
           }
           default: {
-            console.log("not found" + req.url);
+            console.log("not found: " + req.url);
             res.end();
           }
         }
@@ -60,6 +69,13 @@ http
       }
       case "POST": {
         switch (req.url) {
+
+          case "/sendData":{
+            console.log("react Called this")
+            res.end();
+            break;
+          }
+
           case "/req-data": {
             //console.log('req data POST')
 
@@ -88,9 +104,9 @@ http
 
               var connection = connectToDB(res);
 
-              //addUserToDB(connection, user);
+              addUserToDB(connection, user);
 
-              getUserData(connection);
+
             });
 
             res.end();
@@ -120,11 +136,16 @@ function connectToDB(res) {
   return connection;
 }
 
-function getUserData(connection, res) {
+function getUserData(connection) {
   var sql = "SELECT * FROM users";
-  connection.query(sql, function(err, result) {
-    mydata = JSON.stringify(result);
-  });
+
+  return new Promise((resolve, reject)=>{
+    connection.query(sql, function(err, result) {
+        if(err) throw reject("Error get user data")
+        resolve(JSON.stringify(result))
+    });
+  })
+
 }
 
 function addUserToDB(connection, user) {
@@ -135,6 +156,6 @@ function addUserToDB(connection, user) {
   connection.query(sql, function(err, result) {
     if (err) throw err;
 
-    console.log("success");
+
   });
 }
